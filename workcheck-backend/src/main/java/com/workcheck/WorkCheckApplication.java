@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @SpringBootApplication
 @EnableJpaAuditing
 public class WorkCheckApplication {
+    //新增项目
     public static void main(String[] args) {
         SpringApplication.run(WorkCheckApplication.class, args);
     }
