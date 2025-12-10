@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>变更检查表（优化版）</title>
+
+<style>
+body{font-family:"SF Pro Display","Microsoft YaHei";background:#F2F2F7;margin:0;padding:22px;color:#111;}
+h2{font-size:22px;margin-bottom:16px;font-weight:600;}
+.container{background:#ffffff;border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+
+/* 操作栏样式 */
+.controls{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+
+/* 查询区域样式 */
+.query-section{display:flex;gap:8px;align-items:center;}
+
+/* 搜索区域样式 */
+.search-section{display:flex;gap:8px;flex:1;max-width:500px;}
+
+/* 操作按钮区域样式 */
+.action-section{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+
+/* 输入框特殊样式 */
+.user-input{width:120px;}
+.month-input{width:150px;}
+.project-input{width:300px;}
+.search-input{flex:1;padding:8px 12px;border:1px solid #C6C6C8;border-radius:8px;background:#fafafa;font-size:14px;}
+.filter-select{padding:8px 12px;border:1px solid #C6C6C8;border-radius:8px;background:#fafafa;font-size:14px;cursor:pointer;}
+
+input,textarea{
+ width:100%;padding:6px;border:1px solid #C6C6C8;border-radius:8px;
+ background:#fafafa;font-size:13px;transition:.15s;resize:none;
+}
+input:focus,textarea:focus{
+ background:white;border-color:#007AFF;outline:none;
+ box-shadow:0 0 0 2px rgba(0,122,255,.3);
+}
+textarea{min-height:40px;}
+input.error,textarea.error{border-color:#FF3B30;}
+
+button{border:none;padding:6px 12px;border-radius:10px;cursor:pointer;font-weight:500;font-size:13px;transition:0.2s;}
+button:hover{opacity:0.85;transform:translateY(-1px);}
+button:active{transform:translateY(0);}
+.btn-blue{background:#007AFF;color:white;}
+.btn-green{background:#34C759;color:white;}
+.btn-red{background:#FF3B30;color:white;}
+.btn-gray{background:#E5E5EA;color:black;}
+.btn-orange{background:#FF9500;color:white;}
+
+/* 状态指示器 */
+.save-indicator{display:inline-block;margin-left:10px;font-size:12px;color:#8E8E93;}
+.save-indicator.saving{color:#FF9500;}
+.save-indicator.success{color:#34C759;}
+.save-indicator.error{color:#FF3B30;}
+
+table{width:100%;border-collapse:separate;border-spacing:0 6px;}
+thead th{background:#E5E5EA;padding:10px;border-radius:10px 10px 0 0;font-weight:600;font-size:13px;position:sticky;top:0;z-index:10;}
+tbody tr{background:white;transition:0.2s;}
+tbody tr:hover{transform:translateX(2px);box-shadow:0 2px 4px rgba(0,0,0,.1);}
+tbody td{padding:6px;border-top:1px solid #eee;position:relative;}
+
+/* 过滤高亮 */
+.highlight{background:#FFEB3B;padding:2px 4px;border-radius:3px;}
+
+/* 弹窗样式 */
+.modal{
+ display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);
+ align-items:center;justify-content:center;z-index:1000;
+}
+.modal-box{
+ background:white;min-width:520px;max-width:800px;border-radius:14px;
+ position:absolute;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3);
+ animation:modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+ from{opacity:0;transform:scale(0.9);}
+ to{opacity:1;transform:scale(1);}
+}
+
+/* 标题栏左侧可拖动区域 */
+.modal-drag-area{
+ flex:1;cursor:move;padding:5px;
+ user-select:none;
+}
+
+.modal-header{
+ background:#E5E5EA;padding:12px;
+ font-weight:600;font-size:15px;
+ border-radius:14px 14px 0 0;
+ display:flex;align-items:center;gap:10px;
+ justify-content:space-between;
+}
+
+.modal-body{padding:16px;max-height:70vh;overflow:auto;}
+.modal-footer{padding:12px 16px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px;}
+
+.check-row{
+ display:flex;align-items:center;justify-content:space-between;
+ border-bottom:1px solid #f0f0f0;padding:12px 0;transition:0.2s;
+}
+.check-row:hover{background:#f9f9f9;}
+.check-label{font-size:14px;color:#111;}
+.status-btn{
+ padding:8px 16px;border-radius:10px;color:white;
+ cursor:pointer;font-size:13px;font-weight:500;transition:0.2s;
+}
+.status-btn:hover{transform:scale(1.05);}
+.done{background:#34C759;}
+.todo{background:#FF3B30;}
+
+/* 加载动画 */
+.loading{display:inline-block;width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #007AFF;border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+/* 快捷键提示 */
+.shortcut-hint{position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.8);color:white;padding:10px 15px;border-radius:8px;font-size:12px;opacity:0;transition:0.3s;pointer-events:none;z-index:100;}
+.shortcut-hint.show{opacity:1;}
+
+/* Git提交记录样式 */
+.git-commit {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #fafafa;
+  transition: 0.2s;
+}
+.git-commit:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+}
+.commit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.commit-hash {
+  font-family: monospace;
+  color: #007AFF;
+  font-weight: 500;
+}
+.commit-date {
+  color: #666;
+  font-size: 12px;
+}
+.commit-author {
+  color: #333;
+  font-weight: 500;
+}
+.commit-message {
+  color: #333;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.commit-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.commit-file {
+  background: #e5e5ea;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+  transition: 0.2s;
+  text-decoration: none;
+}
+.commit-file:hover {
+  background: #d0d0d5;
+  color: #007AFF;
+}
+
+/* Git图标样式 */
+.git-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+ .modal-box{min-width:90%;margin:10px;}
+ .controls{flex-direction:column;align-items:stretch;}
+ .controls > *{width:100%;}
+ .project-input{width:100%;}
+}
+</style>
+</head>
+
+<body>
+<h2>代码变更检查记录表</h2>
+
+<div class="container">
+  <!-- 操作栏 -->
+  <div class="controls">
+    <!-- 查询区域 -->
+    <div class="query-section">
+      <input id="u" placeholder="用户" class="user-input">
+      <input id="m" type="month" class="month-input">
+      <input id="projectPath" placeholder="项目路径（可选）" class="project-input" title="输入Git项目路径以关联提交记录">
+      <button class="btn-blue" onclick="App.loadData()">加载</button>
+    </div>
+
+    <!-- 搜索区域 -->
+    <div class="search-section">
+      <input type="text" id="searchInput" class="search-input" placeholder="搜索任务、文件或风险...">
+      <select id="filterStatus" class="filter-select">
+        <option value="">全部状态</option>
+        <option value="complete">已完成</option>
+        <option value="incomplete">未完成</option>
+      </select>
+    </div>
+
+    <!-- 操作按钮区域 -->
+    <div class="action-section">
+      <button class="btn-green" onclick="App.saveData()">保存</button>
+      <button class="btn-orange" onclick="App.exportData()">导出</button>
+      <button class="btn-blue" onclick="App.addTask()">+任务</button>
+      <button class="btn-blue" onclick="App.loadGitCommits()">Git记录</button>
+      <button class="btn-gray" onclick="App.clearCache()">清除缓存</button>
+    </div>
+
+    <!-- 状态指示器 -->
+    <span class="save-indicator" id="saveIndicator"></span>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>任务</th><th>变更内容</th><th>文件</th><th>测试</th><th>风险</th><th>核对</th><th>操作</th>
+    </tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+</div>
+
+<!-- 核对弹窗 -->
+<div class="modal" id="modal">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-drag-area" id="modalDrag">核对明细</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-green" id="checkSaveBtn">保存</button>
+        <button class="btn-gray" onclick="App.closeCheck()">取消</button>
+      </div>
+    </div>
+    <div class="modal-body" id="checkArea"></div>
+    <div class="modal-footer">
+      <button class="btn-blue" onclick="App.toggleAllChecks(true)">全部完成</button>
+      <button class="btn-gray" onclick="App.toggleAllChecks(false)">全部未完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- Git提交记录弹窗 -->
+<div class="modal" id="gitModal">
+  <div class="modal-box" id="gitModalBox" style="max-width:1000px;">
+    <div class="modal-header">
+      <div class="modal-drag-area" id="gitModalDrag">Git提交记录</div>
+      <button class="btn-gray" onclick="App.closeGitModal()">关闭</button>
+    </div>
+    <div class="modal-body" id="gitContent">
+      <div id="gitCommits" style="max-height:500px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 快捷键提示 -->
+<div class="shortcut-hint" id="shortcutHint"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+<script>
+// 应用主模块
+const App = {
+  // 配置
+  config: {
+    API: "http://localhost:8080/workcheck/api",
+    DEBOUNCE_DELAY: 500,
+    AUTO_SAVE_DELAY: 3000,
+    CACHE_KEY: 'workCheck_cache',
+    MAX_CACHE_AGE: 24 * 60 * 60 * 1000 // 24小时
+  },
+
+  // 状态
+  state: {
+    tasks: [],
+    curCheck: -1,
+    originalData: null,
+    autoSaveTimer: null,
+    lastSaveTime: 0,
+    isModified: false,
+    checkTemplate: [] // 动态检查项模板
+  },
+
+  // 初始化
+  init() {
+    this.bindEvents();
+    this.loadCheckTemplate(); // 先加载检查项模板
+    this.loadFromCache();
+    this.setupShortcuts();
+    this.showShortcutHint();
+  },
+
+  // 绑定事件
+  bindEvents() {
+    // 搜索防抖
+    document.getElementById('searchInput').addEventListener('input',
+      _.debounce(this.handleSearch.bind(this), this.config.DEBOUNCE_DELAY)
+    );
+
+    // 状态筛选
+    document.getElementById('filterStatus').addEventListener('change', this.filterTasks.bind(this));
+
+    // 自动保存
+    window.addEventListener('beforeunload', () => {
+      if (this.state.isModified) {
+        this.saveToCache();
+      }
+    });
+
+    // 页面失去焦点时保存
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.state.isModified) {
+        this.saveToCache();
+      }
+    });
+  },
+
+  // 设置快捷键
+  setupShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Ctrl+S 保存
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        this.saveData();
+      }
+      // Ctrl+N 新建任务
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        this.addTask();
+      }
+      // Esc 关闭弹窗
+      if (e.key === 'Escape') {
+        this.closeCheck();
+      }
+    });
+  },
+
+  // 显示快捷键提示
+  showShortcutHint() {
+    const hint = document.getElementById('shortcutHint');
+    setTimeout(() => {
+      hint.textContent = '快捷键: Ctrl+S 保存 | Ctrl+N 新建 | Esc 关闭';
+      hint.classList.add('show');
+      setTimeout(() => hint.classList.remove('show'), 5000);
+    }, 1000);
+  },
+
+  // 加载检查项模板
+  async loadCheckTemplate() {
+    try {
+      const res = await fetch(`${this.config.API}/check-template`);
+      const data = await res.json();
+
+      if (data.success && data.checks) {
+        this.state.checkTemplate = data.checks;
+      } else {
+        // 如果加载失败，使用默认模板
+        this.state.checkTemplate = [
+          "代码合并是否完成",
+          "冲突是否确认",
+          "核心逻辑单测覆盖",
+          "高风险点复盘",
+          "日志级别合理",
+          "异常兜底处理",
+          "paas参数核对",
+          "cmc参数核对",
+          "性能测试完成"
+        ];
+      }
+    } catch (error) {
+      console.error('加载检查项模板失败:', error);
+      // 使用默认模板
+      this.state.checkTemplate = [
+        "代码合并是否完成",
+        "冲突是否确认",
+        "核心逻辑单测覆盖",
+        "高风险点复盘",
+        "日志级别合理",
+        "异常兜底处理",
+        "paas参数核对",
+        "cmc参数核对",
+        "性能测试完成"
+      ];
+    }
+  },
+
+  // 搜索功能
+  handleSearch(e) {
+    const keyword = e.target.value.toLowerCase();
+    this.renderTasks(this.getFilteredTasks(keyword));
+  },
+
+  // 筛选任务
+  filterTasks() {
+    const status = document.getElementById('filterStatus').value;
+    const keyword = document.getElementById('searchInput').value.toLowerCase();
+    const tasks = this.getFilteredTasks(keyword);
+
+    if (status === 'complete') {
+      this.renderTasks(tasks.filter(t => this.isTaskComplete(t)));
+    } else if (status === 'incomplete') {
+      this.renderTasks(tasks.filter(t => !this.isTaskComplete(t)));
+    } else {
+      this.renderTasks(tasks);
+    }
+  },
+
+  // 获取过滤后的任务
+  getFilteredTasks(keyword) {
+    if (!keyword) return this.state.tasks;
+
+    return this.state.tasks.filter(task => {
+      return task.taskId.toLowerCase().includes(keyword) ||
+             task.change.toLowerCase().includes(keyword) ||
+             task.risk.toLowerCase().includes(keyword) ||
+             task.files.some(f => f.file.toLowerCase().includes(keyword));
+    });
+  },
+
+  // 检查任务是否完成
+  isTaskComplete(task) {
+    return task.checks && task.checks.every(c => c.status === '完成');
+  },
+
+  // 渲染任务（使用局部更新）
+  renderTasks(tasks) {
+    const tb = document.getElementById('tb');
+    const fragment = document.createDocumentFragment();
+
+    tasks.forEach((task, taskIndex) => {
+      task.files.forEach((file, fileIndex) => {
+        const tr = document.createElement('tr');
+
+        // 任务ID（只在第一行显示）
+        if (fileIndex === 0) {
+          tr.innerHTML = `
+            <td><input data-type="taskId" data-task="${taskIndex}" value="${task.taskId}" class="task-input"></td>
+            <td><textarea data-type="change" data-task="${taskIndex}" class="task-textarea">${task.change}</textarea></td>
+            <td><textarea data-type="file" data-task="${taskIndex}" data-file="${fileIndex}" class="file-textarea">${file.file}</textarea></td>
+            <td><input data-type="test" data-task="${taskIndex}" data-file="${fileIndex}" value="${file.test}" class="test-input"></td>
+            <td><input data-type="risk" data-task="${taskIndex}" value="${task.risk}" class="risk-input"></td>
+            <td>
+              <button class="${this.isTaskComplete(task) ? 'btn-green' : 'btn-gray'}" onclick="App.openCheck(${taskIndex})">
+                核对 (${this.getCheckCount(task)})
+              </button>
+            </td>
+            <td>
+              <button class="btn-blue" onclick="App.duplicateTask(${taskIndex})" style="margin-right:5px;">复制</button>
+              <button class="btn-red" onclick="App.deleteTask(${taskIndex})">删除</button>
+            </td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td></td>
+            <td></td>
+            <td><textarea data-type="file" data-task="${taskIndex}" data-file="${fileIndex}" class="file-textarea">${file.file}</textarea></td>
+            <td><input data-type="test" data-task="${taskIndex}" data-file="${fileIndex}" value="${file.test}" class="test-input"></td>
+            <td></td>
+            <td><button class="btn-red" onclick="App.deleteFile(${taskIndex}, ${fileIndex})">删文件</button></td>
+            <td></td>
+          `;
+        }
+
+        fragment.appendChild(tr);
+      });
+    });
+
+    tb.innerHTML = '';
+    tb.appendChild(fragment);
+
+    // 重新绑定输入事件
+    this.bindInputEvents();
+
+    // 高亮搜索关键词
+    if (document.getElementById('searchInput').value) {
+      this.highlightKeyword(document.getElementById('searchInput').value);
+    }
+  },
+
+  // 获取核对完成数
+  getCheckCount(task) {
+    // 如果任务没有checks，添加默认的
+    if (!task.checks || !Array.isArray(task.checks)) {
+      task.checks = this.getDefaultChecks();
+    }
+    const completed = task.checks.filter(c => c.status === '完成').length;
+    return `${completed}/${task.checks.length}`;
+  },
+
+  // 高亮关键词
+  highlightKeyword(keyword) {
+    if (!keyword) return;
+    const regex = new RegExp(`(${keyword})`, 'gi');
+    document.querySelectorAll('td').forEach(td => {
+      if (td.querySelector('input') || td.querySelector('textarea')) return;
+      const text = td.textContent;
+      if (text.toLowerCase().includes(keyword.toLowerCase())) {
+        td.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+      }
+    });
+  },
+
+  // 绑定输入事件（使用事件委托）
+  bindInputEvents() {
+    const tb = document.getElementById('tb');
+
+    tb.addEventListener('input', _.debounce((e) => {
+      const el = e.target;
+      const { type, task, file } = el.dataset;
+
+      if (this.validateInput(el)) {
+        const taskIndex = parseInt(task);
+        const fileIndex = file ? parseInt(file) : null;
+
+        if (fileIndex !== null) {
+          this.state.tasks[taskIndex].files[fileIndex][type] = el.value;
+        } else {
+          this.state.tasks[taskIndex][type] = el.value;
+        }
+
+        this.markModified();
+        this.autoResizeTextarea(el);
+      }
+    }, 300));
+  },
+
+  // 输入验证
+  validateInput(el) {
+    const value = el.value.trim();
+
+    // 必填字段验证
+    if (el.dataset.type === 'taskId' && !value) {
+      el.classList.add('error');
+      this.showError('任务ID不能为空');
+      return false;
+    }
+
+    // 风险等级验证
+    if (el.dataset.type === 'risk' && value) {
+      const validRisks = ['低', '中', '高'];
+      if (!validRisks.includes(value)) {
+        el.classList.add('error');
+        this.showError('风险等级请输入：低、中、高');
+        return false;
+      }
+    }
+
+    el.classList.remove('error');
+    return true;
+  },
+
+  // 显示错误提示
+  showError(message) {
+    const indicator = document.getElementById('saveIndicator');
+    indicator.textContent = message;
+    indicator.className = 'save-indicator error';
+    setTimeout(() => {
+      indicator.textContent = '';
+      indicator.className = 'save-indicator';
+    }, 3000);
+  },
+
+  // 标记已修改
+  markModified() {
+    this.state.isModified = true;
+    clearTimeout(this.state.autoSaveTimer);
+    this.state.autoSaveTimer = setTimeout(() => {
+      this.saveToCache();
+      this.showSaveStatus('已自动保存到缓存', 'success');
+    }, this.config.AUTO_SAVE_DELAY);
+  },
+
+  // 自动调整文本框高度
+  autoResizeTextarea(el) {
+    if (el.tagName !== 'TEXTAREA') return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  },
+
+  // 加载数据
+  async loadData() {
+    const u = document.getElementById('u');
+    const m = document.getElementById('m');
+
+    if (!u.value.trim() || !m.value.trim()) {
+      this.showError('请填写用户和月份！');
+      return;
+    }
+
+    this.showSaveStatus('加载中...', 'saving');
+
+    try {
+      const res = await fetch(`${this.config.API}/load?user=${u.value.trim()}&month=${m.value}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '加载失败');
+      }
+
+      this.state.tasks = data.tasks || [];
+      // 迁移和确保每个任务都有正确格式的checks字段
+      this.state.tasks.forEach(task => {
+        task.checks = this.migrateChecksFormat(task.checks);
+      });
+
+      this.state.originalData = JSON.parse(JSON.stringify(this.state.tasks));
+      this.state.isModified = false;
+
+      this.renderTasks(this.state.tasks);
+      this.showSaveStatus('加载成功', 'success');
+    } catch (error) {
+      this.showError('加载失败：' + error.message);
+    }
+  },
+
+  // 保存数据
+  async saveData() {
+    if (!this.state.tasks.length) {
+      this.showError('没有数据可保存');
+      return;
+    }
+
+    const u = document.getElementById('u');
+    const m = document.getElementById('m');
+
+    if (!u.value.trim() || !m.value.trim()) {
+      this.showError('请填写用户和月份！');
+      return;
+    }
+
+    this.showSaveStatus('保存中...', 'saving');
+
+    try {
+      const res = await fetch(`${this.config.API}/save?user=${encodeURIComponent(u.value.trim())}&month=${encodeURIComponent(m.value.trim())}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.state.tasks)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '保存失败');
+      }
+
+      this.state.isModified = false;
+      this.state.lastSaveTime = Date.now();
+      this.saveToCache();
+      // 重新渲染任务列表以更新核对按钮状态
+      this.renderTasks(this.state.tasks);
+      this.showSaveStatus('保存成功', 'success');
+    } catch (error) {
+      this.showError('保存失败：' + error.message);
+    }
+  },
+
+  // 导出数据
+  exportData() {
+    if (!this.state.tasks.length) {
+      this.showError('没有数据可导出');
+      return;
+    }
+
+    // CSV格式
+    const csvContent = this.convertToCSV(this.state.tasks);
+    this.downloadFile(csvContent, `变更检查表_${new Date().toLocaleDateString()}.csv`, 'text/csv');
+    this.showSaveStatus('导出成功', 'success');
+  },
+
+  // 转换为CSV
+  convertToCSV(tasks) {
+    const headers = ['任务ID', '变更内容', '文件', '测试', '风险', '核对状态'];
+    const rows = [headers];
+
+    tasks.forEach(task => {
+      task.files.forEach(file => {
+        rows.push([
+          task.taskId,
+          task.change,
+          file.file,
+          file.test,
+          task.risk,
+          this.getCheckCount(task)
+        ]);
+      });
+    });
+
+    return rows.map(row =>
+      row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+  },
+
+  // 下载文件
+  downloadFile(content, filename, type) {
+    const blob = new Blob(['\ufeff' + content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  // 添加任务
+  addTask() {
+    // 生成唯一的任务ID
+    const maxId = this.state.tasks.reduce((max, task) => {
+      const match = task.taskId.match(/S(\d+)/);
+      if (match) {
+        const id = parseInt(match[1]);
+        return id > max ? id : max;
+      }
+      return max;
+    }, 0);
+
+    const newTask = {
+      taskId: "S" + (maxId + 1).toString().padStart(5, "0"),
+      change: "",
+      risk: "",
+      files: [{file: "", test: ""}],
+      checks: this.getDefaultChecks()
+    };
+
+    this.state.tasks.push(newTask);
+    this.renderTasks(this.state.tasks);
+    this.markModified();
+    this.showSaveStatus('已添加新任务', 'success');
+  },
+
+  // 复制任务
+  duplicateTask(index) {
+    const originalTask = this.state.tasks[index];
+
+    // 生成唯一的复制任务ID
+    let suffix = 1;
+    let newTaskId = originalTask.taskId + '-copy';
+
+    // 确保ID唯一
+    while (this.state.tasks.some(t => t.taskId === newTaskId)) {
+      newTaskId = originalTask.taskId + '-copy' + suffix;
+      suffix++;
+    }
+
+    const newTask = {
+      ...originalTask,
+      taskId: newTaskId,
+      files: originalTask.files.map(f => ({...f})),
+      checks: originalTask.checks.map(c => ({...c}))
+    };
+
+    this.state.tasks.splice(index + 1, 0, newTask);
+    this.renderTasks(this.state.tasks);
+    this.markModified();
+    this.showSaveStatus('已复制任务', 'success');
+  },
+
+  // 删除任务
+  deleteTask(index) {
+    if (confirm('确认删除该任务？')) {
+      this.state.tasks.splice(index, 1);
+      this.renderTasks(this.state.tasks);
+      this.markModified();
+      this.showSaveStatus('任务已删除', 'success');
+    }
+  },
+
+  // 删除文件
+  deleteFile(taskIndex, fileIndex) {
+    if (confirm('确认删除该文件？')) {
+      this.state.tasks[taskIndex].files.splice(fileIndex, 1);
+      if (!this.state.tasks[taskIndex].files.length) {
+        this.deleteTask(taskIndex);
+      } else {
+        this.renderTasks(this.state.tasks);
+        this.markModified();
+      }
+    }
+  },
+
+  // 获取默认检查项
+  getDefaultChecks() {
+    // 使用动态加载的模板，如果模板为空则使用默认值
+    const template = this.state.checkTemplate.length > 0 ? this.state.checkTemplate : [
+      "代码合并是否完成",
+      "冲突是否确认",
+      "核心逻辑单测覆盖",
+      "高风险点复盘",
+      "日志级别合理",
+      "异常兜底处理",
+      "paas参数核对",
+      "cmc参数核对",
+      "性能测试完成"
+    ];
+
+    return template.map((item, index) => ({
+      checkItem: item,
+      status: "未完成",
+      sortOrder: index
+    }));
+  },
+
+  // 迁移旧格式的检查项数据
+  migrateChecksFormat(checks) {
+    if (!Array.isArray(checks)) return this.getDefaultChecks();
+
+    // 检查是否是新格式（第一个元素是对象）
+    if (checks.length > 0 && typeof checks[0] === 'object' && checks[0].checkItem) {
+      return checks;
+    }
+
+    // 旧格式：[["检查项", "状态"], ...]
+    if (checks.length > 0 && Array.isArray(checks[0])) {
+      return checks.map((check, index) => ({
+        checkItem: check[0],
+        status: check[1] || '未完成',
+        sortOrder: index
+      }));
+    }
+
+    // 默认返回新格式
+    return this.getDefaultChecks();
+  },
+
+  // 打开核对弹窗
+  openCheck(taskIndex) {
+    this.state.curCheck = taskIndex;
+    const task = this.state.tasks[taskIndex];
+
+    // 确保任务有checks字段
+    if (!task.checks || !Array.isArray(task.checks)) {
+      task.checks = this.getDefaultChecks();
+    }
+
+    const modal = document.getElementById('modal');
+    modal.style.display = 'flex';
+    this.centerModal();
+    this.renderChecks();
+  },
+
+  // 关闭核对弹窗
+  closeCheck() {
+    const modal = document.getElementById('modal');
+    modal.style.display = 'none';
+    if (this.state.curCheck >= 0) {
+      this.markModified();
+      // 重新渲染任务列表以更新核对按钮状态
+      this.renderTasks(this.state.tasks);
+    }
+  },
+
+  // 渲染检查项
+  renderChecks() {
+    const checkArea = document.getElementById('checkArea');
+    const task = this.state.tasks[this.state.curCheck];
+    const checks = task.checks;
+
+    checkArea.innerHTML = checks.map((check, index) => `
+      <div class="check-row">
+        <div class="check-label">${check.checkItem}</div>
+        <button class="status-btn ${check.status === '完成' ? 'done' : 'todo'}"
+                onclick="App.toggleCheck(${index})">
+          ${check.status}
+        </button>
+      </div>
+    `).join('');
+  },
+
+  // 切换检查项状态
+  toggleCheck(index) {
+    const check = this.state.tasks[this.state.curCheck].checks[index];
+    check.status = check.status === '完成' ? '未完成' : '完成';
+    this.renderChecks();
+    this.markModified();
+  },
+
+  // 全部切换
+  toggleAllChecks(complete) {
+    const task = this.state.tasks[this.state.curCheck];
+    task.checks.forEach(check => {
+      check.status = complete ? '完成' : '未完成';
+    });
+    this.renderChecks();
+    this.markModified();
+  },
+
+  // 显示保存状态
+  showSaveStatus(message, type) {
+    const indicator = document.getElementById('saveIndicator');
+    indicator.textContent = message;
+    indicator.className = `save-indicator ${type}`;
+  },
+
+  // 保存到本地缓存
+  saveToCache() {
+    const cache = {
+      tasks: this.state.tasks,
+      timestamp: Date.now(),
+      user: document.getElementById('u').value,
+      month: document.getElementById('m').value
+    };
+
+    try {
+      localStorage.setItem(this.config.CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      console.error('缓存保存失败:', e);
+    }
+  },
+
+  // 从本地缓存加载
+  loadFromCache() {
+    try {
+      const cacheStr = localStorage.getItem(this.config.CACHE_KEY);
+      if (!cacheStr) return;
+
+      const cache = JSON.parse(cacheStr);
+      if (Date.now() - cache.timestamp > this.config.MAX_CACHE_AGE) {
+        this.clearCache();
+        return;
+      }
+
+      this.state.tasks = cache.tasks || [];
+      // 确保每个任务都有checks字段
+      this.state.tasks.forEach(task => {
+        if (!task.checks || !Array.isArray(task.checks)) {
+          task.checks = this.getDefaultChecks();
+        }
+      });
+
+      document.getElementById('u').value = cache.user || '';
+      document.getElementById('m').value = cache.month || '';
+
+      if (this.state.tasks.length) {
+        this.renderTasks(this.state.tasks);
+        this.showSaveStatus('已从缓存恢复数据', 'success');
+      }
+    } catch (e) {
+      console.error('缓存加载失败:', e);
+      this.clearCache();
+    }
+  },
+
+  // 清除缓存
+  clearCache() {
+    localStorage.removeItem(this.config.CACHE_KEY);
+    this.showSaveStatus('缓存已清除', 'success');
+  },
+
+  // 居中弹窗
+  centerModal() {
+    const box = document.getElementById('modalBox');
+    box.style.left = "50%";
+    box.style.top = "50%";
+    box.style.transform = "translate(-50%, -50%)";
+  },
+
+  // Git相关方法
+  async loadGitCommits() {
+    const u = document.getElementById('u');
+    const m = document.getElementById('m');
+    const projectPath = document.getElementById('projectPath');
+
+    if (!u.value.trim() || !m.value.trim()) {
+      this.showError('请填写用户和月份！');
+      return;
+    }
+
+    if (!projectPath.value.trim()) {
+      this.showError('请填写项目路径！');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${this.config.API}/git/commits?userName=${encodeURIComponent(u.value.trim())}&month=${m.value.trim()}&projectPath=${encodeURIComponent(projectPath.value.trim())}`);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '加载Git提交记录失败');
+      }
+
+      this.showGitModal(data.commits, data.remoteUrl);
+    } catch (error) {
+      this.showError('加载Git提交记录失败：' + error.message);
+    }
+  },
+
+  showGitModal(commits, remoteUrl) {
+    const modal = document.getElementById('gitModal');
+    const gitContent = document.getElementById('gitCommits');
+
+    let html = '';
+
+    if (commits.length === 0) {
+      html = '<p style="text-align:center;color:#666;padding:20px;">该月份没有找到Git提交记录</p>';
+    } else {
+      html = commits.map(commit => {
+        const filesHtml = commit.files.map(file => {
+          // 生成文件链接，优先使用远程URL
+          let fileUrl = '';
+          if (remoteUrl) {
+            // 转换为blob URL格式
+            const baseUrl = remoteUrl.endsWith('.git') ? remoteUrl.slice(0, -4) : remoteUrl;
+            fileUrl = `${baseUrl}/blob/${commit.hash}/${file}`;
+          }
+
+          return `<a href="${fileUrl}" target="_blank" class="commit-file" title="点击查看文件">${file}</a>`;
+        }).join('');
+
+        return `
+          <div class="git-commit">
+            <div class="commit-header">
+              <span>
+                <span class="commit-hash">${commit.hash.substring(0, 7)}</span>
+                <span class="commit-author">${commit.author}</span>
+              </span>
+              <span class="commit-date">${commit.date}</span>
+            </div>
+            <div class="commit-message">${commit.message}</div>
+            <div class="commit-files">${filesHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    gitContent.innerHTML = html;
+    modal.style.display = 'flex';
+
+    // 居中显示
+    this.centerGitModal();
+  },
+
+  closeGitModal() {
+    document.getElementById('gitModal').style.display = 'none';
+  },
+
+  centerGitModal() {
+    const box = document.getElementById('gitModalBox');
+    box.style.position = 'fixed';
+    box.style.left = "50%";
+    box.style.top = "50%";
+    box.style.transform = "translate(-50%, -50%)";
+    box.style.margin = "0";
+  }
+};
+
+// 拖动功能
+class ModalDrag {
+  constructor() {
+    this.box = document.getElementById('modalBox');
+    this.dragArea = document.getElementById('modalDrag');
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.isDragging = false;
+    this.init();
+  }
+
+  init() {
+    this.dragArea.addEventListener('mousedown', this.startDrag.bind(this));
+    document.addEventListener('mousemove', this.drag.bind(this));
+    document.addEventListener('mouseup', this.stopDrag.bind(this));
+
+    // 添加拖动时的视觉效果
+    this.box.addEventListener('mousedown', () => {
+      this.box.style.cursor = 'grabbing';
+      this.box.style.transition = 'none';
+    });
+  }
+
+  startDrag(e) {
+    this.isDragging = true;
+    const rect = this.box.getBoundingClientRect();
+    this.offsetX = e.clientX - rect.left;
+    this.offsetY = e.clientY - rect.top;
+    this.dragArea.style.cursor = 'grabbing';
+  }
+
+  drag(e) {
+    if (!this.isDragging) return;
+
+    e.preventDefault();
+    const x = e.clientX - this.offsetX;
+    const y = e.clientY - this.offsetY;
+
+    // 限制在窗口内
+    const maxX = window.innerWidth - this.box.offsetWidth;
+    const maxY = window.innerHeight - this.box.offsetHeight;
+
+    const finalX = Math.max(0, Math.min(x, maxX));
+    const finalY = Math.max(0, Math.min(y, maxY));
+
+    this.box.style.left = finalX + 'px';
+    this.box.style.top = finalY + 'px';
+    this.box.style.transform = 'none';
+  }
+
+  stopDrag() {
+    this.isDragging = false;
+    this.dragArea.style.cursor = 'move';
+    this.box.style.cursor = '';
+    this.box.style.transition = '';
+  }
+}
+
+// 初始化应用
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+  new ModalDrag();
+
+  // 绑定保存按钮事件
+  document.getElementById("checkSaveBtn").onclick = async () => {
+    App.closeCheck();
+    // 保存到后端
+    await App.saveData();
+  };
+});
+</script>
+</body>
+</html>
