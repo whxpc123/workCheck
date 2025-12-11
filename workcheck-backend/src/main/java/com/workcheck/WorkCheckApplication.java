@@ -10,5 +10,6 @@ public class WorkCheckApplication {
     //新增项目
     public static void main(String[] args) {
         SpringApplication.run(WorkCheckApplication.class, args);
+        System.out.println("启动成功日志打印");
     }
 }
